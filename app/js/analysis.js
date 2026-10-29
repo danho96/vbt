@@ -43,7 +43,11 @@ export function repMetrics(samples, startIndex) {
   };
 }
 
-/** Streaming concentric-phase detector. Feed raw sensor samples in order; onRep fires once per accepted rep. */
+/**
+ * Streaming movement-phase detector. Feed raw sensor samples in order; onRep fires once per phase that is
+ * long and fast enough, in either cable direction (phase.direction: +1 out, -1 in). Session decides which
+ * phases are concentric reps.
+ */
 export class RepDetector {
   constructor(onRep, options = {}) {
     this.onRep = onRep;

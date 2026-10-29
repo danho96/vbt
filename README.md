@@ -1,35 +1,27 @@
 # VBT
 
-Web app (PWA) for velocity-based training with the Queling VBT sensor (`$ENCODE-xxxx`).
-Runs in Chrome on Android via Web Bluetooth; no build step, no backend. Workouts stay on the phone.
+Aplikacja webowa (PWA) do treningu VBT z czujnikiem **Queling** (`$ENCODE-xxxx`).
+Działa w Chrome na Androidzie przez Web Bluetooth: bez kroku budowania i bez backendu. Treningi zostają na telefonie.
 
-- `app/` – the web app, deployed to GitHub Pages on every push to `main`
-- `tests/` – `npm test` (Node 22+), runs rep detection against a recorded session
-- `tools/` – Python scripts used to reverse engineer the sensor (`pip install bleak`)
+**Aplikacja:** https://danho96.github.io/vbt/
 
-## Sensor protocol
+| | |
+|---|---|
+| [HANDOFF.md](HANDOFF.md) | stan projektu, jak uruchomić, znane ograniczenia, kolejne kroki |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | moduły, przepływ danych, algorytm powtórzeń i serii |
+| [docs/PROTOCOL.md](docs/PROTOCOL.md) | protokół Bluetooth czujnika i narzędzia do jego badania |
 
-Nordic UART Service (`6e400001-b5a3-f393-e0a9-e50e24dcca9e`). Single-byte commands written to RX (`…0002`):
+## Struktura
 
-| Command | Meaning | Reply on TX (`…0003`) |
-|---|---|---|
-| `0x20` | status | `21 00` + u16 LE battery voltage in 0.01 V |
-| `0x30` | start streaming | data packets |
-| `0x31` | stop streaming | – |
+- `app/`: aplikacja, publikowana na GitHub Pages przy każdym pushu na `main`
+- `tests/`: `npm test` (Node 22+), wykrywanie powtórzeń na nagranej sesji
+- `tools/`: skrypty w Pythonie do badania czujnika (`pip install bleak`)
 
-Data packet: `33 00` + 20 × (int16 LE position [mm], int16 LE velocity [mm/s]) at 100 Hz.
-The velocity channel is smoothed on the sensor and lags position by ~50 ms (5 samples).
-
-## Local development
+## Uruchomienie lokalne
 
 ```
 python -m http.server 8080 --directory app
 ```
 
-To test on a phone over USB (Web Bluetooth needs HTTPS or localhost):
-
-```
-adb reverse tcp:8080 tcp:8080
-```
-
-then open `http://localhost:8080` in Chrome on the phone.
+Na telefonie przez USB (Web Bluetooth wymaga HTTPS albo localhost): `adb reverse tcp:8080 tcp:8080`,
+a potem `http://localhost:8080` w Chrome na telefonie.
