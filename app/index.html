@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0f11">
+  <title>VBT</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main>
+    <section id="home" class="screen">
+      <div class="home-hero">
+        <div class="logo">VBT</div>
+        <p class="muted">Pomiar prędkości sztangi z czujnikiem Queling</p>
+      </div>
+      <p id="no-bluetooth" class="notice" hidden>Ta przeglądarka nie obsługuje Bluetooth. Otwórz stronę w Chrome na Androidzie.</p>
+      <p id="connect-error" class="notice" hidden></p>
+      <div class="stack">
+        <button id="connect" class="btn primary">Połącz z czujnikiem</button>
+        <button id="demo" class="btn">Tryb demo</button>
+        <button id="open-history" class="btn ghost">Historia treningów</button>
+      </div>
+    </section>
+
+    <section id="live" class="screen" hidden>
+      <header class="bar">
+        <span id="sensor-status" class="muted"></span>
+        <span id="set-label" class="muted"></span>
+      </header>
+
+      <div class="hero">
+        <div id="hero-label" class="muted"></div>
+        <div id="hero-value" class="hero-value">–</div>
+        <div id="hero-unit" class="muted"></div>
+      </div>
+
+      <div id="tiles" class="tiles"></div>
+
+      <div class="reps-head muted"><span>Powtórzenia</span><span id="reps-metric"></span></div>
+      <div id="reps-wrap" class="reps-wrap">
+        <ol id="reps" class="reps"></ol>
+        <p id="waiting" class="muted center">Czekam na pierwsze powtórzenie…</p>
+      </div>
+
+      <footer class="actions">
+        <button id="new-set" class="btn">Nowa seria</button>
+        <button id="finish" class="btn">Zakończ</button>
+        <button id="open-settings" class="btn icon" aria-label="Ustawienia">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        </button>
+      </footer>
+    </section>
+
+    <section id="settings" class="screen" hidden>
+      <header class="bar">
+        <button class="btn ghost back" data-back>← Wróć</button>
+      </header>
+      <h1>Co wyświetlać</h1>
+
+      <label class="field">
+        <span class="muted">Duża liczba</span>
+        <select id="hero-metric"></select>
+      </label>
+
+      <div class="muted group-label">Kafelki</div>
+      <div id="tile-toggles" class="toggles"></div>
+
+      <div class="muted group-label">Progi</div>
+      <label class="row-field">Ostrzeżenie o spadku prędkości
+        <span><input id="loss-warn" type="number" min="5" max="60" step="1" inputmode="numeric"> %</span>
+      </label>
+      <label class="row-field">Nowa seria po przerwie
+        <span><input id="set-gap" type="number" min="5" max="600" step="5" inputmode="numeric"> s</span>
+      </label>
+
+      <div class="muted group-label">Przy przekroczeniu progu</div>
+      <label class="row-field">Wibracja <input id="vibrate" type="checkbox" class="switch"></label>
+      <label class="row-field">Dźwięk <input id="beep" type="checkbox" class="switch"></label>
+    </section>
+
+    <section id="summary" class="screen" hidden>
+      <header class="bar">
+        <span id="summary-date" class="muted"></span>
+      </header>
+      <h1>Podsumowanie</h1>
+      <div id="summary-sets"></div>
+      <footer class="actions">
+        <button id="export" class="btn">Eksport CSV</button>
+        <button id="summary-done" class="btn primary">Gotowe</button>
+      </footer>
+    </section>
+
+    <section id="history" class="screen" hidden>
+      <header class="bar">
+        <button class="btn ghost back" data-back>← Wróć</button>
+      </header>
+      <h1>Historia treningów</h1>
+      <ul id="history-list" class="history"></ul>
+      <p id="history-empty" class="muted center" hidden>Zakończone treningi pojawią się tutaj.</p>
+    </section>
+  </main>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

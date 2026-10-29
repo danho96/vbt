@@ -1,0 +1,5 @@
+# Raw Bluetooth captures and Android bugreports contain personal phone data
+captures/
+*.zip
+__pycache__/
+.claude/settings.local.json
