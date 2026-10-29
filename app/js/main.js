@@ -65,12 +65,15 @@ async function start(source) {
 $('connect').addEventListener('click', () => start(new BleSensor()));
 $('demo').addEventListener('click', () => start(new DemoSensor()));
 
+// During training the header only speaks up when the connection is not healthy;
+// sensor name and battery live in settings.
 function renderStatus() {
   if (!sensor) return;
   const labels = { connecting: 'Łączenie…', reconnecting: 'Utracono połączenie, łączę ponownie…', disconnected: 'Rozłączono' };
-  const text = labels[sensor.state] ?? [sensor.name, battery && `${fmt(battery, 2)} V`].filter(Boolean).join(' · ');
-  $('sensor-status').textContent = text;
+  $('sensor-status').textContent = labels[sensor.state] ?? '';
   $('sensor-status').style.color = sensor.state === 'reconnecting' ? 'var(--warn)' : '';
+  $('sensor-name').textContent = sensor.name;
+  $('sensor-battery').textContent = battery ? `${fmt(battery, 2)} V` : '–';
 }
 
 async function keepScreenOn() {
