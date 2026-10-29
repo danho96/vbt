@@ -58,7 +58,17 @@
       <header class="bar">
         <button class="btn ghost back" data-back>← Wróć</button>
       </header>
-      <h1>Co wyświetlać</h1>
+      <h1>Ustawienia</h1>
+
+      <label class="field">
+        <span class="muted">Faza koncentryczna (pomiar), gdy</span>
+        <select id="direction">
+          <option value="out">Linka się wysuwa</option>
+          <option value="in">Linka się wsuwa</option>
+          <option value="auto">Automatycznie (szybsza faza)</option>
+        </select>
+        <span class="muted hint">Auto: w każdej serii za fazę koncentryczną uznaje szybszy kierunek. Przy bardzo szybkich, symetrycznych powtórzeniach może się pomylić.</span>
+      </label>
 
       <label class="field">
         <span class="muted">Duża liczba</span>

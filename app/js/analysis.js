@@ -50,8 +50,9 @@ export class RepDetector {
     this.opts = { ...DEFAULT_DETECTION, ...options };
     this.positions = []; // positions waiting for their (late) velocity sample
     this.index = 0; // absolute index of the aligned sample
-    this.rising = []; // aligned samples since velocity last was <= 0
-    this.risingStart = 0;
+    this.run = []; // aligned samples since velocity last changed sign
+    this.runSign = 0;
+    this.runStart = 0;
     this.confirmed = false;
   }
 
@@ -61,20 +62,24 @@ export class RepDetector {
     const pos = this.positions.shift();
     const vel = rawVel;
     const i = this.index++;
-    if (vel <= 0) {
+    const sign = Math.sign(vel);
+    if (sign !== this.runSign) {
       if (this.confirmed) this.finish();
-      this.rising = [];
+      this.run = [];
+      this.runSign = sign;
+      this.runStart = i;
       this.confirmed = false;
-      return;
     }
-    if (this.rising.length === 0) this.risingStart = i;
-    this.rising.push([pos, vel]);
-    if (vel >= this.opts.startVelocity) this.confirmed = true;
+    if (sign === 0) return;
+    // Mirror moves toward the sensor so every phase is measured as positive travel.
+    this.run.push([pos * sign, vel * sign]);
+    if (vel * sign >= this.opts.startVelocity) this.confirmed = true;
   }
 
   finish() {
-    const rep = repMetrics(this.rising, this.risingStart);
+    const rep = repMetrics(this.run, this.runStart);
     if (rep.rom * 10 >= this.opts.minRom && rep.peakVelocity * 1000 >= this.opts.minPeakVelocity) {
+      rep.direction = this.runSign;
       this.onRep(rep);
     }
   }
@@ -82,35 +87,96 @@ export class RepDetector {
 
 export const velocityLoss = (best, current) => (best > 0 ? (best - current) / best : 0);
 
-/** Groups reps into sets by the gap between them, and tracks each set's best and velocity loss. */
+// Which way the concentric phase goes: cable pulled out of the sensor (+1), retracting into it (-1),
+// or 'auto': per set, the faster of the two phases. VBT lifts are done with maximal intent on the way up
+// and a controlled descent, so the concentric phase is usually the fast one. Fast, symmetric reps (on the
+// reference recording the two directions differ by <20%) make that ambiguous, so auto waits for a clear
+// difference or for AUTO_MAX_PHASES phases each way before deciding.
+export const DIRECTION_OUT = 1;
+export const DIRECTION_IN = -1;
+const AUTO_CLEAR_RATIO = 1.2;
+const AUTO_MAX_PHASES = 3;
+
+/**
+ * Turns movement phases into reps grouped into sets. A set ends after setGapSeconds without movement
+ * or on newSet(). Feeding a phase (or closing a set) returns the reps accepted by that call, since in
+ * auto mode the first reps of a set are only known once a phase in each direction has been seen.
+ */
 export class Session {
   constructor(options = {}) {
-    this.opts = { ...DEFAULT_DETECTION, ...options };
+    this.opts = { direction: 'out', ...DEFAULT_DETECTION, ...options };
     this.sets = [];
-    this.lastRepEnd = -Infinity;
-    this.forceNewSet = false;
-  }
-
-  newSet() {
-    this.forceNewSet = true;
+    this.lastPhaseEnd = -Infinity;
+    this.setDirection = null; // concentric direction of the set being performed
+    this.pending = []; // auto mode: phases seen before the set's direction is known
+    this.startNextSet = true; // the next accepted rep opens a new set
   }
 
   get currentSet() {
     return this.sets[this.sets.length - 1];
   }
 
-  /** @returns {{set: object, rep: Rep, isNewSet: boolean}} */
-  addRep(rep) {
-    const gap = rep.startTime - this.lastRepEnd;
-    const isNewSet = this.forceNewSet || !this.currentSet || gap >= this.opts.setGapSeconds;
-    if (isNewSet) {
-      this.sets.push({ number: this.sets.length + 1, reps: [], startedAt: Date.now() });
-      this.forceNewSet = false;
+  /** @returns {Array<{set: object, rep: Rep}>} */
+  newSet() {
+    const accepted = this.closeSet();
+    this.startNextSet = true;
+    return accepted;
+  }
+
+  /** Ends the current set, deciding its direction from whatever was seen if auto mode was still unsure. */
+  closeSet() {
+    const accepted = this.pending.length ? this.resolvePending() : [];
+    this.setDirection = null;
+    return accepted;
+  }
+
+  /** @returns {Array<{set: object, rep: Rep}>} */
+  addPhase(phase) {
+    const accepted = [];
+    if (phase.startTime - this.lastPhaseEnd >= this.opts.setGapSeconds) accepted.push(...this.newSet());
+    this.lastPhaseEnd = phase.startTime + phase.duration;
+
+    const fixed = { out: DIRECTION_OUT, in: DIRECTION_IN }[this.opts.direction];
+    this.setDirection ??= fixed ?? null;
+    if (this.setDirection !== null) {
+      if (phase.direction === this.setDirection) accepted.push(...this.accept([phase]));
+      return accepted;
     }
-    const set = this.currentSet;
-    set.reps.push(rep);
-    this.lastRepEnd = rep.startTime + rep.duration;
-    return { set, rep, isNewSet };
+
+    this.pending.push(phase);
+    const out = this.pending.filter((p) => p.direction === DIRECTION_OUT);
+    const inward = this.pending.filter((p) => p.direction === DIRECTION_IN);
+    const avg = (phases) => phases.reduce((a, p) => a + p.meanVelocity, 0) / phases.length;
+    if (out.length && inward.length) {
+      const ratio = Math.max(avg(out), avg(inward)) / Math.min(avg(out), avg(inward));
+      if (ratio < AUTO_CLEAR_RATIO && Math.min(out.length, inward.length) < AUTO_MAX_PHASES) return accepted;
+      accepted.push(...this.resolvePending());
+    }
+    return accepted;
+  }
+
+  /** Auto mode: picks the faster direction (on average) among pending phases and accepts those as reps. */
+  resolvePending() {
+    const avg = (dir) => {
+      const phases = this.pending.filter((p) => p.direction === dir);
+      return phases.length ? phases.reduce((a, p) => a + p.meanVelocity, 0) / phases.length : 0;
+    };
+    this.setDirection = avg(DIRECTION_OUT) >= avg(DIRECTION_IN) ? DIRECTION_OUT : DIRECTION_IN;
+    const accepted = this.accept(this.pending.filter((p) => p.direction === this.setDirection));
+    this.pending = [];
+    return accepted;
+  }
+
+  accept(reps) {
+    return reps.map((rep) => {
+      if (this.startNextSet) {
+        this.sets.push({ number: this.sets.length + 1, reps: [], startedAt: Date.now() });
+        this.startNextSet = false;
+      }
+      const set = this.currentSet;
+      set.reps.push(rep);
+      return { set, rep };
+    });
   }
 }
 

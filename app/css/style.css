@@ -98,6 +98,7 @@ h1 { font-size: 22px; font-weight: 600; margin: 8px 0 16px; }
 .actions .btn:not(.icon) { flex: 1; }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+.field .hint { font-size: 12px; line-height: 1.4; }
 select, input[type="number"] {
   font: inherit;
   color: var(--text);

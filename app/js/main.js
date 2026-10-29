@@ -36,8 +36,8 @@ document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('clic
 async function start(source) {
   $('connect-error').hidden = true;
   sensor = source;
-  session = new Session({ setGapSeconds: settings.setGapSeconds });
-  detector = new RepDetector(onRep);
+  session = new Session({ setGapSeconds: settings.setGapSeconds, direction: settings.direction });
+  detector = new RepDetector(onPhase);
   battery = null;
   sensor.addEventListener('state', renderStatus);
   sensor.addEventListener('battery', (e) => {
@@ -91,13 +91,19 @@ document.addEventListener('visibilitychange', () => {
 
 // ---------- reps ----------
 
-function onRep(rep) {
+function onPhase(phase) {
   // Sets are split on wall-clock gaps, so time spent disconnected still counts as rest.
-  rep.startTime = performance.now() / 1000 - rep.duration;
-  const { set } = session.addRep(rep);
-  const best = Math.max(...set.reps.map((r) => r.meanVelocity));
-  rep.velocityLoss = velocityLoss(best, rep.meanVelocity);
-  if (rep.velocityLoss * 100 >= settings.lossWarnPercent) warn();
+  phase.startTime = performance.now() / 1000 - phase.duration;
+  showAccepted(session.addPhase(phase));
+}
+
+function showAccepted(accepted) {
+  if (!accepted.length) return;
+  for (const { set, rep } of accepted) {
+    const best = Math.max(...set.reps.map((r) => r.meanVelocity));
+    rep.velocityLoss = velocityLoss(best, rep.meanVelocity);
+  }
+  if (isWarn(accepted[accepted.length - 1].rep)) warn();
   renderLive({ flash: true });
 }
 
@@ -126,7 +132,7 @@ const listMetric = () => (settings.heroMetric === 'velocityLoss' ? 'meanVelocity
 
 function renderLive({ flash = false } = {}) {
   // After "Nowa seria" the next set exists only once its first rep arrives; show it empty until then.
-  const set = session.forceNewSet ? null : session.currentSet;
+  const set = session.startNextSet ? null : session.currentSet;
   const reps = set?.reps ?? [];
   const last = reps[reps.length - 1];
   const hero = METRICS[settings.heroMetric];
@@ -169,13 +175,12 @@ function repRows(reps, key) {
 }
 
 $('new-set').addEventListener('click', () => {
-  if (session.currentSet?.reps.length) {
-    session.newSet();
-    renderLive();
-  }
+  showAccepted(session.newSet());
+  renderLive();
 });
 
 $('finish').addEventListener('click', async () => {
+  session.closeSet();
   const sets = session.sets.filter((s) => s.reps.length);
   await sensor?.disconnect();
   sensor = null;
@@ -202,6 +207,7 @@ function renderSettings() {
     .filter(([key]) => key !== settings.heroMetric)
     .map(([key, m]) => `<label>${m.label}<input type="checkbox" class="switch" data-tile="${key}" ${settings.tiles.includes(key) ? 'checked' : ''}></label>`)
     .join('');
+  $('direction').value = settings.direction;
   $('loss-warn').value = settings.lossWarnPercent;
   $('set-gap').value = settings.setGapSeconds;
   $('vibrate').checked = settings.vibrate;
@@ -217,6 +223,11 @@ $('settings').addEventListener('change', (e) => {
   else if (t.id === 'set-gap') settings.setGapSeconds = clamp(+t.value, 5, 600, settings.setGapSeconds);
   else if (t.id === 'vibrate') settings.vibrate = t.checked;
   else if (t.id === 'beep') settings.beep = t.checked;
+  else if (t.id === 'direction') {
+    settings.direction = t.value;
+    // Applies from the next set; the set in progress keeps the direction it was measured with.
+    if (session) session.opts.direction = t.value;
+  }
   saveSettings(settings);
   if (session) session.opts.setGapSeconds = settings.setGapSeconds;
   renderSettings();

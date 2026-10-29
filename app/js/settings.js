@@ -10,6 +10,7 @@ export const METRICS = {
 };
 
 export const DEFAULT_SETTINGS = {
+  direction: 'out',
   heroMetric: 'meanVelocity',
   tiles: ['peakVelocity', 'velocityLoss'],
   lossWarnPercent: 20,
