@@ -174,7 +174,9 @@ export class Session {
   accept(reps) {
     return reps.map((rep) => {
       if (this.startNextSet) {
-        this.sets.push({ number: this.sets.length + 1, reps: [], startedAt: Date.now() });
+        // newSetInfo lets the app stamp each set with what was lifted (exercise, load, velocity zone).
+        const info = this.opts.newSetInfo?.() ?? {};
+        this.sets.push({ ...info, number: this.sets.length + 1, reps: [], startedAt: Date.now() });
         this.startNextSet = false;
       }
       const set = this.currentSet;

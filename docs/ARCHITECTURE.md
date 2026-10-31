@@ -15,19 +15,46 @@ bez backendu**. Działa w Chrome na Androidzie przez Web Bluetooth. Dane zostaj�
 
 ```
 app/
-├── index.html          5 ekranów: home, live, settings, summary, history (sekcje z [hidden])
-├── css/style.css       tokeny kolorów w :root, układ mobilny
+├── index.html          ekrany (sekcje z [hidden]), arkusz serii, dolna nawigacja (4 zakładki)
+├── css/style.css       tokeny kolorów w :root, wspólny motyw wszystkich zakładek
+├── fonts/              Barlow Condensed 500/600 (OFL), lokalnie, żeby działało offline
 ├── js/
 │   ├── protocol.js     UUID, komendy, parsePacket(): DataView → battery | samples
 │   ├── sensor.js       BleSensor (Web Bluetooth, auto-reconnect), DemoSensor (odtwarza nagranie)
 │   ├── analysis.js     RepDetector (fazy ruchu), Session (kierunek, serie), metryki
-│   ├── settings.js     definicje metryk (METRICS), ustawienia w localStorage
-│   ├── history.js      historia treningów w localStorage, eksport CSV
-│   └── main.js         nawigacja, renderowanie, spinanie modułów
+│   ├── zones.js        strefy prędkości: domyślne, status powtórzenia, wypełnienie pierścienia
+│   ├── settings.js     definicje metryk (METRICS), ćwiczenia, ustawienia w localStorage
+│   ├── history.js      zawodnicy, treningi, seria postępu, eksport CSV
+│   ├── ui.js           helpery DOM, ikony SVG, wykresy SVG (pierścień, słupki, linia)
+│   └── main.js         nawigacja zakładek, renderowanie ekranów, spinanie modułów
 ├── demo/recording.json 122 pakiety z prawdziwej sesji (tryb demo i testy)
 ├── sw.js               service worker: najpierw sieć, potem cache (działa offline)
 └── manifest.webmanifest, icon*.{svg,png}
 ```
+
+## Ekrany (wersja 2, wg materiałów od trenerki)
+
+| Zakładka | Ekrany | Co robi |
+|---|---|---|
+| Trening | `setup` → `live` → `summary` | wybór zawodnika, ćwiczenia, ciężaru i strefy; trening na żywo z pierścieniem; podsumowanie z komentarzem i zatwierdzeniem |
+| Strefy | `zones` → `zone-edit` | wybór aktywnej strefy, edycja zakresu podwójnym suwakiem, własne strefy, co pokazuje środek pierścienia |
+| Zawodnicy | `athletes` → `athlete` → `summary` | lista z wyszukiwarką, wykres postępu (ćwiczenie i ewentualnie stały ciężar), lista treningów |
+| Ustawienia | `settings` | kierunek, kafelki (maks. 3), progi, informacje o czujniku |
+
+Każda zakładka ma własny stos ekranów, więc przejście do innej zakładki w trakcie treningu i powrót wraca
+na ekran treningu. Pomiar trwa niezależnie od tego, która zakładka jest otwarta.
+
+**Pierścień:** wypełnienie to wartość / górna granica aktywnej strefy (bez strefy: wartość / 1,5 m/s),
+a kreska oznacza dolną granicę strefy. Kolor pokazuje pozycję powtórzenia: zielony w strefie,
+żółty poniżej, niebieski powyżej. Środek pokazuje średnią, max albo % powtórzeń serii w strefie.
+
+**Seria = co było podnoszone.** `Session` przyjmuje `newSetInfo()`, które przy otwarciu serii zapisuje
+w niej zawodnika, ćwiczenie, ciężar i migawkę strefy. Zmiana któregoś z nich w arkuszu w trakcie serii
+zaczyna nową serię. Zmiana strefy w zakładce Strefy podmienia strefę bieżącej serii.
+Przy „Zakończ trening” serie są dzielone na osobne treningi per zawodnik, więc trenerka może
+w jednej sesji naprzemiennie prowadzić kilka osób.
+
+**Moc** (kafelek i podsumowanie) = ciężar × 9,81 × prędkość średnia [W]. Pokazuje się tylko przy podanym ciężarze.
 
 ## Przepływ danych
 
@@ -97,8 +124,12 @@ więc reszta aplikacji nie wie, czy dane są prawdziwe.
 
 | Klucz localStorage | Zawartość |
 |---|---|
-| `vbt.settings.v1` | ustawienia (metryki, progi, kierunek, wibracja/dźwięk) |
-| `vbt.history.v1` | do 200 ostatnich treningów: `{date, sets: [{number, reps: [Rep]}]}` |
+| `vbt.settings.v1` | ustawienia (kafelki, środek pierścienia, progi, kierunek, strefy, aktywna strefa, ostatni zawodnik/ćwiczenie/ciężar) |
+| `vbt.athletes.v1` | zawodnicy `[{id, name}]` |
+| `vbt.history.v1` | do 500 ostatnich treningów: `{id, date, athleteId, comment, approved, sets: [{number, exercise, load, zone, reps: [Rep]}]}` |
+
+Dane z wersji 1 wczytują się bez zmian: treningi bez `athleteId` trafiają do „Bez zawodnika” (dostają `id`
+przy pierwszym odczycie), a `heroMetric` z ustawień zamienia się na `ringMetric`.
 
 Wyczyszczenie danych przeglądarki usuwa historię. Jedyna kopia zapasowa to eksport CSV.
 CSV ma separator `;`, przecinki dziesiętne i BOM, czyli format, który otwiera polski Excel.

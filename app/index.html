@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0e0f11">
+  <meta name="theme-color" content="#0f1216">
   <title>VBT</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -11,111 +11,221 @@
 </head>
 <body>
   <main>
-    <section id="home" class="screen">
-      <div class="home-hero">
+    <!-- ===== Trening: before connecting ===== -->
+    <section id="setup" class="screen" data-tab="training">
+      <div class="brand">
         <div class="logo">VBT</div>
-        <p class="muted">Pomiar prędkości sztangi z czujnikiem Queling</p>
+        <p class="muted">Pomiar prędkości sztangi</p>
       </div>
+      <button id="setup-card" class="card setup-card">
+        <span class="label">Zawodnik</span><span id="setup-athlete" class="value"></span>
+        <span class="label">Ćwiczenie</span><span id="setup-exercise" class="value"></span>
+        <span class="label">Ciężar</span><span id="setup-load" class="value"></span>
+        <span class="label">Strefa</span><span id="setup-zone" class="value"></span>
+      </button>
       <p id="no-bluetooth" class="notice" hidden>Ta przeglądarka nie obsługuje Bluetooth. Otwórz stronę w Chrome na Androidzie.</p>
       <p id="connect-error" class="notice" hidden></p>
       <div class="stack">
         <button id="connect" class="btn primary">Połącz z czujnikiem</button>
         <button id="demo" class="btn">Tryb demo</button>
-        <button id="open-history" class="btn ghost">Historia treningów</button>
       </div>
     </section>
 
-    <section id="live" class="screen" hidden>
-      <header class="bar">
-        <span id="sensor-status" class="muted"></span>
-        <span id="set-label" class="muted"></span>
+    <!-- ===== Trening: live ===== -->
+    <section id="live" class="screen" data-tab="training" hidden>
+      <header class="live-head">
+        <span id="conn" class="conn"><i></i><span id="conn-text"></span></span>
+        <button id="live-who" class="who"></button>
       </header>
-
-      <div class="hero">
-        <div id="hero-label" class="muted"></div>
-        <div id="hero-value" class="hero-value">–</div>
-        <div id="hero-unit" class="muted"></div>
+      <div class="live-title">
+        <h1 id="live-exercise" class="display"></h1>
+        <div id="live-progress" class="sub"></div>
       </div>
 
-      <div id="tiles" class="tiles"></div>
+      <div class="ring-wrap">
+        <div id="ring"></div>
+        <div class="ring-center">
+          <div id="ring-label" class="ring-label"></div>
+          <div id="ring-value" class="ring-value">–</div>
+          <div id="ring-unit" class="ring-unit"></div>
+        </div>
+      </div>
+      <div id="ring-zone" class="ring-zone"></div>
 
-      <div class="reps-head muted"><span>Powtórzenia</span><span id="reps-metric"></span></div>
-      <div id="reps-wrap" class="reps-wrap">
-        <ol id="reps" class="reps"></ol>
-        <p id="waiting" class="muted center">Czekam na pierwsze powtórzenie…</p>
+      <div id="tiles" class="stat-row"></div>
+
+      <div class="card set-card">
+        <div class="set-head">
+          <span class="display-sm">SERIA</span>
+          <span id="set-avg" class="muted"></span>
+          <span id="set-max" class="muted"></span>
+        </div>
+        <div id="reps-wrap" class="reps-wrap">
+          <ol id="reps" class="reps"></ol>
+          <p id="waiting" class="muted center">Czekam na pierwsze powtórzenie…</p>
+        </div>
       </div>
 
-      <footer class="actions">
+      <div class="actions">
         <button id="new-set" class="btn">Nowa seria</button>
-        <button id="finish" class="btn">Zakończ</button>
-        <button id="open-settings" class="btn icon" aria-label="Ustawienia">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-        </button>
-      </footer>
+        <button id="finish" class="btn danger">Zakończ trening</button>
+      </div>
     </section>
 
-    <section id="settings" class="screen" hidden>
-      <header class="bar">
-        <button class="btn ghost back" data-back>← Wróć</button>
-      </header>
-      <h1>Ustawienia</h1>
-
-      <label class="field">
-        <span class="muted">Faza koncentryczna (pomiar), gdy</span>
-        <select id="direction">
-          <option value="out">Linka się wysuwa</option>
-          <option value="in">Linka się wsuwa</option>
-          <option value="auto">Automatycznie (szybsza faza)</option>
-        </select>
-        <span class="muted hint">Auto: w każdej serii za fazę koncentryczną uznaje szybszy kierunek. Przy bardzo szybkich, symetrycznych powtórzeniach może się pomylić.</span>
-      </label>
-
-      <label class="field">
-        <span class="muted">Duża liczba</span>
-        <select id="hero-metric"></select>
-      </label>
-
-      <div class="muted group-label">Kafelki</div>
-      <div id="tile-toggles" class="toggles"></div>
-
-      <div class="muted group-label">Progi</div>
-      <label class="row-field">Ostrzeżenie o spadku prędkości
-        <span><input id="loss-warn" type="number" min="5" max="60" step="1" inputmode="numeric"> %</span>
-      </label>
-      <label class="row-field">Nowa seria po przerwie
-        <span><input id="set-gap" type="number" min="5" max="600" step="5" inputmode="numeric"> s</span>
-      </label>
-
-      <div class="muted group-label">Przy przekroczeniu progu</div>
-      <label class="row-field">Wibracja <input id="vibrate" type="checkbox" class="switch"></label>
-      <label class="row-field">Dźwięk <input id="beep" type="checkbox" class="switch"></label>
-
-      <div class="muted group-label">Czujnik</div>
-      <div class="row-field">Nazwa <span id="sensor-name" class="muted"></span></div>
-      <div class="row-field">Bateria <span id="sensor-battery" class="muted"></span></div>
-    </section>
-
+    <!-- ===== Podsumowanie treningu ===== -->
     <section id="summary" class="screen" hidden>
-      <header class="bar">
-        <span id="summary-date" class="muted"></span>
-      </header>
-      <h1>Podsumowanie</h1>
+      <header class="bar"><button class="btn ghost back" data-back></button></header>
+      <h1 id="summary-title" class="display"></h1>
+      <p id="summary-date" class="muted"></p>
       <div id="summary-sets"></div>
-      <footer class="actions">
-        <button id="export" class="btn">Eksport CSV</button>
-        <button id="summary-done" class="btn primary">Gotowe</button>
-      </footer>
+      <div class="card">
+        <label class="display-sm" for="summary-comment">KOMENTARZ</label>
+        <textarea id="summary-comment" rows="3" placeholder="Np. kontroluj tempo opuszczania"></textarea>
+      </div>
+      <div class="actions">
+        <button id="export" class="btn icon" aria-label="Eksport CSV"></button>
+        <button id="approve" class="btn primary"></button>
+      </div>
     </section>
 
-    <section id="history" class="screen" hidden>
-      <header class="bar">
-        <button class="btn ghost back" data-back>← Wróć</button>
-      </header>
-      <h1>Historia treningów</h1>
-      <ul id="history-list" class="history"></ul>
-      <p id="history-empty" class="muted center" hidden>Zakończone treningi pojawią się tutaj.</p>
+    <!-- ===== Strefy ===== -->
+    <section id="zones" class="screen" data-tab="zones" hidden>
+      <h1 class="display">STREFY PRĘDKOŚCI</h1>
+      <p class="muted">Aktywna strefa koloruje powtórzenia i wypełnia pierścień. Dotknij strefy, żeby ją włączyć.</p>
+      <div id="zone-list" class="zone-list"></div>
+      <button id="add-zone" class="btn outline"></button>
+
+      <div class="card">
+        <div class="display-sm">W ŚRODKU PIERŚCIENIA</div>
+        <div id="ring-metric" class="segmented" role="radiogroup"></div>
+      </div>
+    </section>
+
+    <section id="zone-edit" class="screen" hidden>
+      <header class="bar"><button class="btn ghost back" data-back></button></header>
+      <h1 id="zone-edit-title" class="display"></h1>
+      <div class="card">
+        <label class="field"><span class="muted">Nazwa</span><input id="zone-name" type="text" maxlength="30"></label>
+        <div class="range-values">
+          <div><span class="muted">Dolna granica</span><input id="zone-min-input" type="number" step="0.01" min="0" max="1.5" inputmode="decimal"></div>
+          <div><span class="muted">Górna granica</span><input id="zone-max-input" type="number" step="0.01" min="0" max="1.5" inputmode="decimal"></div>
+        </div>
+        <div class="dual-range">
+          <div id="zone-fill" class="dual-fill"></div>
+          <input id="zone-min" type="range" min="0" max="1.5" step="0.01" aria-label="Dolna granica">
+          <input id="zone-max" type="range" min="0" max="1.5" step="0.01" aria-label="Górna granica">
+        </div>
+        <div class="range-scale muted"><span>0,00 m/s</span><span>1,50+ m/s</span></div>
+        <p id="zone-range-text" class="center"></p>
+      </div>
+      <div class="actions">
+        <button id="zone-delete" class="btn icon danger" aria-label="Usuń strefę"></button>
+        <button id="zone-save" class="btn primary"></button>
+      </div>
+    </section>
+
+    <!-- ===== Zawodnicy ===== -->
+    <section id="athletes" class="screen" data-tab="athletes" hidden>
+      <h1 class="display">ZAWODNICY</h1>
+      <div class="search"><span id="search-icon"></span><input id="athlete-search" type="search" placeholder="Szukaj zawodnika"></div>
+      <ul id="athlete-list" class="list"></ul>
+      <form id="add-athlete" class="add-row">
+        <input id="new-athlete" type="text" maxlength="40" placeholder="Imię i nazwisko" autocomplete="off">
+        <button class="btn primary" type="submit">Dodaj</button>
+      </form>
+    </section>
+
+    <section id="athlete" class="screen" hidden>
+      <header class="bar"><button class="btn ghost back" data-back></button></header>
+      <div class="athlete-head"><span id="athlete-avatar" class="avatar lg"></span><h1 id="athlete-name" class="display"></h1></div>
+
+      <div id="progress-card" class="card">
+        <div class="display-sm">POSTĘP</div>
+        <div class="filters">
+          <select id="progress-exercise" aria-label="Ćwiczenie"></select>
+          <select id="progress-load" aria-label="Ciężar"></select>
+        </div>
+        <div id="progress-chart"></div>
+        <p id="progress-text" class="muted"></p>
+      </div>
+
+      <div class="display-sm section-label">TRENINGI</div>
+      <ul id="workout-list" class="list"></ul>
+      <p id="workouts-empty" class="muted center" hidden>Zakończone treningi pojawią się tutaj.</p>
+    </section>
+
+    <!-- ===== Ustawienia ===== -->
+    <section id="settings" class="screen" data-tab="settings" hidden>
+      <h1 class="display">USTAWIENIA</h1>
+
+      <div class="card">
+        <label class="field">
+          <span class="muted">Faza koncentryczna (pomiar), gdy</span>
+          <select id="direction">
+            <option value="out">Linka się wysuwa</option>
+            <option value="in">Linka się wsuwa</option>
+            <option value="auto">Automatycznie (szybsza faza)</option>
+          </select>
+          <span class="muted hint">Auto: w każdej serii za fazę koncentryczną uznaje szybszy kierunek. Przy bardzo szybkich, symetrycznych powtórzeniach może się pomylić.</span>
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="display-sm">KAFELKI POD PIERŚCIENIEM <span class="muted">(maks. 3)</span></div>
+        <div id="tile-toggles" class="toggles"></div>
+      </div>
+
+      <div class="card">
+        <div class="display-sm">PROGI</div>
+        <label class="row-field">Ostrzeżenie o spadku prędkości
+          <span><input id="loss-warn" type="number" min="5" max="60" step="1" inputmode="numeric"> %</span>
+        </label>
+        <label class="row-field">Nowa seria po przerwie
+          <span><input id="set-gap" type="number" min="5" max="600" step="5" inputmode="numeric"> s</span>
+        </label>
+        <label class="row-field">Wibracja przy ostrzeżeniu <input id="vibrate" type="checkbox" class="switch"></label>
+        <label class="row-field">Dźwięk przy ostrzeżeniu <input id="beep" type="checkbox" class="switch"></label>
+      </div>
+
+      <div class="card">
+        <div class="display-sm">CZUJNIK</div>
+        <div class="row-field">Nazwa <span id="sensor-name" class="muted">–</span></div>
+        <div class="row-field">Bateria <span id="sensor-battery" class="muted">–</span></div>
+      </div>
     </section>
   </main>
+
+  <!-- ===== Arkusz: zawodnik / ćwiczenie / ciężar ===== -->
+  <div id="sheet" class="sheet-backdrop" hidden>
+    <form id="sheet-form" class="sheet" method="dialog">
+      <div class="sheet-grip"></div>
+      <h2 class="display-sm">SERIA</h2>
+      <label class="field"><span class="muted">Zawodnik</span><select id="sheet-athlete"></select></label>
+      <label class="field"><span class="muted">Ćwiczenie</span><input id="sheet-exercise" list="exercise-list" maxlength="40" autocomplete="off" placeholder="Np. Przysiad"></label>
+      <datalist id="exercise-list"></datalist>
+      <div class="field">
+        <span class="muted">Ciężar [kg]</span>
+        <div class="stepper">
+          <button type="button" class="btn icon" data-step="-2.5" aria-label="Mniej o 2,5 kg"></button>
+          <input id="sheet-load" type="number" min="0" max="500" step="0.5" inputmode="decimal">
+          <button type="button" class="btn icon" data-step="2.5" aria-label="Więcej o 2,5 kg"></button>
+        </div>
+      </div>
+      <p id="sheet-note" class="muted hint"></p>
+      <div class="actions">
+        <button type="button" id="sheet-cancel" class="btn">Anuluj</button>
+        <button type="submit" class="btn primary">Zapisz</button>
+      </div>
+    </form>
+  </div>
+
+  <nav class="tabbar" aria-label="Główne">
+    <button data-tab="training"><span data-icon="training"></span>Trening</button>
+    <button data-tab="zones"><span data-icon="zone"></span>Strefy</button>
+    <button data-tab="athletes"><span data-icon="athletes"></span>Zawodnicy</button>
+    <button data-tab="settings"><span data-icon="settings"></span>Ustawienia</button>
+  </nav>
+
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
