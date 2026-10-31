@@ -65,6 +65,22 @@ Potem otwórz `http://localhost:8080` w Chrome na telefonie. Bez czujnika użyj 
 | Historia | Tylko localStorage, maks. 200 treningów. Wyczyszczenie danych Chrome je usuwa | średnia |
 | iPhone | Nieobsługiwany (brak Web Bluetooth w WebKit) | poza zakresem |
 
+## Wersja 2 (branch `feature/trainer-v2`)
+
+Na podstawie materiałów od trenerki (rendery z Gemini, filmy Vitruve i OVR Velocity; materiały
+w `trener_info/`, poza repo). Jej priorytet: wartość główna, powtórzenia i podsumowanie serii.
+Reszta to dodatki.
+
+- [x] Jeden ciemny motyw na wszystkich zakładkach, dolna nawigacja (Trening, Strefy, Zawodnicy, Ustawienia)
+- [x] Ekran treningu jak render 1: ćwiczenie, „Seria N | Powt. M”, pierścień, 3 kafelki z ikonami, karta serii
+- [x] Strefy prędkości (Moc, Hipertrofia, Siła + własne, edycja podwójnym suwakiem), kolorowanie i pierścień
+- [x] Zawodnik, ćwiczenie i ciężar przypisane do serii, moc w W
+- [x] Podsumowanie jak render 2: wykres słupkowy, tabela, komentarz, „Zatwierdź wynik”
+- [x] Zawodnicy: wyszukiwarka, wykres postępu (także przy stałym ciężarze), lista treningów ze statusem
+- [ ] Próba na telefonie z prawdziwym czujnikiem
+- Świadomie pominięte z renderów: bateria na ekranie treningu (użytkownik wcześniej prosił o jej usunięcie),
+  zdjęcia zawodników (są inicjały), „metalowe” tła z renderów 5–7, RPE i czas trwania treningu.
+
 ## Pomysły na kolejne kroki
 
 Dalszy kierunek ustala zawodnik z trenerką. Do tej pory zgłaszane były tylko uwagi o przejrzystości.

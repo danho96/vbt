@@ -1,9 +1,11 @@
 // Network first so updates show up right away; the cache only serves the app offline (e.g. gym without signal).
-const CACHE = 'vbt-v1';
+const CACHE = 'vbt-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'css/style.css',
   'js/main.js', 'js/analysis.js', 'js/protocol.js', 'js/sensor.js', 'js/settings.js', 'js/history.js',
-  'demo/recording.json',
+  'js/zones.js', 'js/ui.js', 'demo/recording.json',
+  'fonts/barlow-condensed-latin-500.woff2', 'fonts/barlow-condensed-latin-600.woff2',
+  'fonts/barlow-condensed-latin-ext-500.woff2', 'fonts/barlow-condensed-latin-ext-600.woff2',
 ];
 
 self.addEventListener('install', (e) => {

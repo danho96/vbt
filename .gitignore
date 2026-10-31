@@ -3,3 +3,4 @@ captures/
 *.zip
 __pycache__/
 .claude/settings.local.json
+trener_info/
