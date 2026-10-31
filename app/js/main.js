@@ -3,10 +3,14 @@ import { BleSensor, DemoSensor, bluetoothAvailable } from './sensor.js';
 import { METRICS, MAX_TILES, RING_METRICS, EXERCISES, fmt, loadSettings, saveSettings, batteryPercent } from './settings.js';
 import {
   loadAthletes, addAthlete, athleteName, loadHistory, saveWorkout, updateWorkout, getWorkout,
-  workoutsOf, workoutTotals, progressSeries, workoutCsv,
+  workoutsOf, workoutTotals, workoutCsv,
 } from './history.js';
 import { PRESET_ZONES, SLIDER_MAX, zoneStatus, ringFraction, percentInZone, formatRange } from './zones.js';
-import { $, esc, icon, initials, formatDate, ring, barChart, lineChart } from './ui.js';
+import {
+  PROGRESS_METRICS, TREND_LABELS, exerciseSessions, exerciseLoads, mainLoad, trend, exerciseOverview,
+  workoutByExercise, workoutMinutes,
+} from './progress.js';
+import { $, esc, icon, initials, formatDate, ring, barChart, lineChart, sparkline } from './ui.js';
 
 let settings = loadSettings();
 let sensor = null;
@@ -364,10 +368,26 @@ renderers.summary = () => {
   const name = athleteName(workout.athleteId);
   $('summary-title').textContent = name ? `Zawodnik: ${name}` : 'Podsumowanie';
   $('summary-date').textContent = formatDate(workout.date, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  renderIntel(workout);
   $('summary-sets').innerHTML = workout.sets.map((set) => setBlock(set)).join('');
   $('summary-comment').value = workout.comment ?? '';
   renderApprove(workout);
 };
+
+/** Workout at a glance, per exercise (coach's "session intel"); set details follow below. */
+function renderIntel(workout) {
+  const groups = workoutByExercise(workout);
+  const minutes = workoutMinutes(workout);
+  const duration = minutes === null ? '–' : minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;
+  $('summary-intel').innerHTML = `<div class="intel">
+    <div class="display-sm">ĆWICZENIA</div>
+    ${groups.map((g) => `<div class="intel-row">
+      <span class="name">${esc(g.exercise || 'Bez nazwy')}</span><span class="num">${fmt(g.avg, 2)} m/s</span>
+      <span class="muted">${g.sets.length} ${plural(g.sets.length, 'seria', 'serie', 'serii')} · ${g.reps} powt.${g.loads.length ? ` · ${g.loads.map(loadText).join(', ')}` : ''}</span><span class="muted">średnia</span>
+    </div>`).join('')}
+    <div class="intel-foot"><span>Czas treningu: <b>${duration}</b></span><span id="intel-status" class="${workout.approved ? 'approved' : ''}">${workout.approved ? 'Zatwierdzony' : 'Niezatwierdzony'}</span></div>
+  </div>`;
+}
 
 function setBlock(set) {
   const s = setSummary(set);
@@ -393,6 +413,11 @@ function setBlock(set) {
 function renderApprove(workout) {
   $('approve').innerHTML = workout.approved ? `${icon('check')} Zatwierdzono` : 'Zatwierdź wynik';
   $('approve').classList.toggle('approved', !!workout.approved);
+  const status = $('intel-status');
+  if (status) {
+    status.textContent = workout.approved ? 'Zatwierdzony' : 'Niezatwierdzony';
+    status.classList.toggle('approved', !!workout.approved);
+  }
 }
 
 $('summary-comment').addEventListener('change', (e) => updateWorkout(summaryId, { comment: e.target.value.trim() }));
@@ -408,19 +433,23 @@ $('export').addEventListener('click', async () => {
   const athlete = athleteName(workout.athleteId);
   const csv = workoutCsv(workout, athlete);
   const name = `${athlete ? `${athlete.replace(/[^\p{L}\p{N}]+/gu, '-')}-` : ''}trening-${workout.date.slice(0, 16).replace(/[:T]/g, '-')}.csv`;
-  const file = new File([csv], name, { type: 'text/csv' });
+  shareFile(new File([csv], name, { type: 'text/csv' }), 'Trening VBT');
+});
+
+/** Android share sheet when available (e-mail, WhatsApp, Drive…), otherwise a plain download. */
+async function shareFile(file, title) {
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Trening VBT' });
+      await navigator.share({ files: [file], title });
       return;
     } catch (err) {
       if (err.name === 'AbortError') return;
     }
   }
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: name });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
   a.click();
   URL.revokeObjectURL(a.href);
-});
+}
 
 // ============================================================ zones screen
 
@@ -580,16 +609,21 @@ renderers.athlete = () => {
   $('athlete-name').textContent = name;
   const workouts = workoutsOf(shownAthleteId);
 
-  // progress
-  const exercises = [...new Set(workouts.flatMap((w) => w.sets.map((s) => s.exercise)).filter(Boolean))];
-  $('progress-card').hidden = exercises.length === 0;
-  if (exercises.length) {
-    const sel = $('progress-exercise');
-    const keep = exercises.includes(sel.value) ? sel.value : exercises[0];
-    sel.innerHTML = exercises.map((e) => `<option>${esc(e)}</option>`).join('');
-    sel.value = keep;
-    renderProgress(workouts);
-  }
+  // One row per exercise: trend at its main load, so different weights are not mixed.
+  const overview = exerciseOverview(workouts);
+  $('exercises-label').hidden = overview.length === 0;
+  $('exercise-list').innerHTML = overview
+    .map((o) => {
+      const t = o.trend;
+      const label = t.status ? TREND_LABELS[t.status] : null;
+      const meta = [o.load ? `przy ${loadText(o.load)}` : 'bez podanego ciężaru', `${o.totalSessions} ${plural(o.totalSessions, 'trening', 'treningi', 'treningów')}`].join(' · ');
+      return `<li><button data-exercise="${esc(o.exercise)}">
+        <span class="grow"><div class="title">${esc(o.exercise)}</div><div class="meta">${meta}</div></span>
+        ${o.sessions.length > 1 ? sparkline(o.sessions.map((s) => s.best)) : ''}
+        <span class="side"><span class="num">${fmt(t.last, 2)}</span>${label ? `<span class="badge ${label.className}">${changeText(t)}</span>` : '<span class="badge">1 trening</span>'}</span>
+      </button></li>`;
+    })
+    .join('');
 
   // workouts
   $('workout-list').innerHTML = workouts
@@ -602,36 +636,108 @@ renderers.athlete = () => {
   $('workouts-empty').hidden = workouts.length > 0;
 };
 
-function renderProgress(workouts = workoutsOf(shownAthleteId)) {
-  const exercise = $('progress-exercise').value;
-  const loads = [...new Set(workouts.flatMap((w) => w.sets.filter((s) => s.exercise === exercise && s.load).map((s) => s.load)))].sort((a, b) => a - b);
-  const loadSel = $('progress-load');
-  const keep = loads.includes(+loadSel.value) ? loadSel.value : '';
-  loadSel.innerHTML = `<option value="">Każdy ciężar</option>${loads.map((l) => `<option value="${l}">${loadText(l)}</option>`).join('')}`;
-  loadSel.value = keep;
-  const series = progressSeries(workouts, exercise, keep === '' ? null : +keep);
-  if (!series.length) {
-    $('progress-chart').innerHTML = '';
-    $('progress-text').textContent = 'Brak danych dla tego ciężaru.';
-    return;
-  }
-  $('progress-chart').innerHTML = lineChart(series);
-  const first = series[0].value;
-  const lastV = series[series.length - 1].value;
-  const diff = lastV - first;
-  $('progress-text').textContent = series.length > 1
-    ? `Najszybsze powtórzenie w treningu. Od pierwszego: ${diff >= 0 ? '+' : ''}${fmt(diff, 2)} m/s (${diff >= 0 ? '+' : ''}${fmt((diff / first) * 100, 0)}%).`
-    : `Najszybsze powtórzenie w treningu: ${fmt(lastV, 2)} m/s. Wykres pojawi się po kolejnym treningu.`;
-}
+const signed = (v, digits) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${fmt(Math.abs(v), digits)}`;
+const changeText = (t) => `${signed(t.changePct * 100, 0)}%`;
 
-$('progress-exercise').addEventListener('change', () => renderProgress());
-$('progress-load').addEventListener('change', () => renderProgress());
-
-$('workout-list').addEventListener('click', (e) => {
+function openWorkout(e) {
   const b = e.target.closest('[data-workout]');
   if (!b) return;
   summaryId = b.dataset.workout;
   go('summary');
+}
+
+$('workout-list').addEventListener('click', openWorkout);
+
+// ============================================================ progress of one exercise
+
+let shownExercise = null;
+let exerciseLoad = undefined; // undefined: not chosen yet, use the main load; '' = every load
+let exerciseMetric = 'best';
+
+$('exercise-list').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-exercise]');
+  if (!b) return;
+  shownExercise = b.dataset.exercise;
+  exerciseLoad = undefined;
+  go('exercise');
+});
+
+function exerciseView() {
+  const workouts = workoutsOf(shownAthleteId);
+  const load = exerciseLoad === undefined ? mainLoad(workouts, shownExercise) : exerciseLoad === '' ? null : +exerciseLoad;
+  const sessions = exerciseSessions(workouts, shownExercise, load);
+  return { workouts, load, sessions, trend: trend(sessions, exerciseMetric) };
+}
+
+renderers.exercise = () => {
+  const { workouts, load, sessions, trend: t } = exerciseView();
+  const name = athleteName(shownAthleteId) ?? 'Bez zawodnika';
+  $('exercise-athlete').textContent = name;
+  $('exercise-name').textContent = shownExercise;
+
+  const loads = exerciseLoads(workouts, shownExercise);
+  $('exercise-load').innerHTML = `<option value="">Każdy ciężar</option>${loads.map((l) => `<option value="${l}">${loadText(l)}</option>`).join('')}`;
+  $('exercise-load').value = load === null ? '' : String(load);
+  $('exercise-load-hint').hidden = !(load === null && loads.length > 1);
+  $('exercise-metric').innerHTML = Object.entries(PROGRESS_METRICS).map(([k, m]) => `<option value="${k}">${m.label}</option>`).join('');
+  $('exercise-metric').value = exerciseMetric;
+
+  const metric = PROGRESS_METRICS[exerciseMetric];
+  $('exercise-chart-title').innerHTML = `${metric.label}${load ? ` · ${loadText(load)}` : ''} <span class="unit">m/s</span>`;
+  if (!sessions.length) {
+    $('exercise-chart').innerHTML = '<p class="muted">Brak treningów dla tego ciężaru.</p>';
+    $('exercise-key').innerHTML = '';
+    $('exercise-trend').innerHTML = '';
+    $('exercise-rows').innerHTML = '';
+    return;
+  }
+  const points = sessions.map((s) => ({ date: s.date, value: s[exerciseMetric] }));
+  const bestIdx = points.findIndex((p) => p.value === t.best);
+  $('exercise-chart').innerHTML = lineChart(points, { highlight: bestIdx });
+
+  const day = (iso) => formatDate(iso, { day: 'numeric', month: 'short' });
+  const cls = t.change > 0 ? 'pos' : t.change < 0 ? 'neg' : '';
+  $('exercise-key').innerHTML = `
+    <div><span class="muted">Start · ${day(sessions[0].date)}</span><b>${fmt(t.first, 2)} m/s</b></div>
+    <div><span class="muted">Ostatni · ${day(sessions[sessions.length - 1].date)}</span><b>${fmt(t.last, 2)} m/s</b></div>
+    <div><span class="muted">Najlepszy · ${day(t.bestDate)}</span><b>${fmt(t.best, 2)} m/s</b></div>
+    <div><span class="muted">Postęp od startu</span><b class="${cls}">${signed(t.change, 2)} m/s (${changeText(t)})</b></div>`;
+  const label = t.status ? TREND_LABELS[t.status] : null;
+  $('exercise-trend').innerHTML = label
+    ? `<span class="muted">Trend z ${sessions.length} treningów</span><span class="badge ${label.className}">${t.consistent ? label.consistent : label.text}</span>`
+    : '<span class="muted">Trend pojawi się po drugim treningu.</span>';
+
+  $('exercise-col').textContent = `${metric.short} m/s`;
+  $('exercise-rows').innerHTML = [...sessions]
+    .reverse()
+    .map((s) => `<tr data-workout="${esc(s.workoutId)}"><td>${formatDate(s.date, { day: 'numeric', month: 'short', year: '2-digit' })}</td><td>${s.sets}</td><td>${fmt(s.peak, 2)}</td><td>${fmt(s[exerciseMetric], 2)}</td></tr>`)
+    .join('');
+  $('exercise-share').innerHTML = `${icon('share')} Udostępnij raport`;
+};
+
+$('exercise-load').addEventListener('change', (e) => {
+  exerciseLoad = e.target.value;
+  renderers.exercise();
+});
+$('exercise-metric').addEventListener('change', (e) => {
+  exerciseMetric = e.target.value;
+  renderers.exercise();
+});
+$('exercise-rows').addEventListener('click', openWorkout);
+
+$('exercise-share').addEventListener('click', () => {
+  const { load, sessions, trend: t } = exerciseView();
+  const athlete = athleteName(shownAthleteId);
+  const n = (v) => v.toFixed(2).replace('.', ',');
+  const rows = [
+    [`Zawodnik: ${athlete ?? 'Bez zawodnika'}`], [`Ćwiczenie: ${shownExercise}`], [`Ciężar: ${load ? loadText(load) : 'każdy'}`], [],
+    ['Data', 'Serie', 'Powtórzenia', 'Najszybsze [m/s]', 'Średnia [m/s]', 'Max [m/s]'],
+    ...sessions.map((s) => [new Date(s.date).toLocaleDateString('pl-PL'), s.sets, s.reps, n(s.best), n(s.avg), n(s.peak)]),
+  ];
+  if (t?.status) rows.push([], [`Postęp od startu (${PROGRESS_METRICS[exerciseMetric].label}): ${signed(t.change, 2)} m/s (${changeText(t)}), trend: ${t.consistent ? TREND_LABELS[t.status].consistent : TREND_LABELS[t.status].text}`]);
+  const csv = '﻿' + rows.map((r) => r.map((c) => (/[;"\r\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : c)).join(';')).join('\r\n');
+  const slug = (s) => s.replace(/[^\p{L}\p{N}]+/gu, '-');
+  shareFile(new File([csv], `postep-${athlete ? `${slug(athlete)}-` : ''}${slug(shownExercise)}.csv`, { type: 'text/csv' }), 'Postęp VBT');
 });
 
 // ============================================================ settings

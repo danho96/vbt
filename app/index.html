@@ -77,6 +77,7 @@
       <header class="bar"><button class="btn ghost back" data-back></button></header>
       <h1 id="summary-title" class="display"></h1>
       <p id="summary-date" class="muted"></p>
+      <div id="summary-intel" class="card"></div>
       <div id="summary-sets"></div>
       <div class="card">
         <label class="display-sm" for="summary-comment">KOMENTARZ</label>
@@ -139,19 +140,46 @@
       <header class="bar"><button class="btn ghost back" data-back></button></header>
       <div class="athlete-head"><span id="athlete-avatar" class="avatar lg"></span><h1 id="athlete-name" class="display"></h1></div>
 
-      <div id="progress-card" class="card">
-        <div class="display-sm">POSTĘP</div>
-        <div class="filters">
-          <select id="progress-exercise" aria-label="Ćwiczenie"></select>
-          <select id="progress-load" aria-label="Ciężar"></select>
-        </div>
-        <div id="progress-chart"></div>
-        <p id="progress-text" class="muted"></p>
-      </div>
+      <div id="exercises-label" class="display-sm section-label">POSTĘPY W ĆWICZENIACH</div>
+      <ul id="exercise-list" class="list"></ul>
 
       <div class="display-sm section-label">TRENINGI</div>
       <ul id="workout-list" class="list"></ul>
       <p id="workouts-empty" class="muted center" hidden>Zakończone treningi pojawią się tutaj.</p>
+    </section>
+
+    <section id="exercise" class="screen" hidden>
+      <header class="bar"><button class="btn ghost back" data-back></button></header>
+      <div class="muted" id="exercise-athlete"></div>
+      <h1 id="exercise-name" class="display"></h1>
+      <div class="filters">
+        <select id="exercise-load" aria-label="Ciężar"></select>
+        <select id="exercise-metric" aria-label="Miara"></select>
+      </div>
+      <p id="exercise-load-hint" class="muted hint" hidden>Różne ciężary na jednym wykresie: prędkość zależy od ciężaru, więc porównuj ostrożnie.</p>
+
+      <div class="card">
+        <div id="exercise-chart-title" class="display-sm"></div>
+        <div id="exercise-chart"></div>
+      </div>
+
+      <div class="card key-data">
+        <div class="display-sm">KLUCZOWE DANE</div>
+        <div id="exercise-key" class="key-grid"></div>
+        <div id="exercise-trend" class="trend-line"></div>
+      </div>
+
+      <div class="card">
+        <div class="display-sm">TRENINGI</div>
+        <table class="reps-table history-table">
+          <thead><tr><th>Data</th><th>Serie</th><th>Max m/s</th><th id="exercise-col"></th></tr></thead>
+          <tbody id="exercise-rows"></tbody>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button id="exercise-share" class="btn"></button>
+      </div>
     </section>
 
     <!-- ===== Ustawienia ===== -->

@@ -38,7 +38,7 @@ app/
 |---|---|---|
 | Trening | `setup` → `live` → `summary` | wybór zawodnika, ćwiczenia, ciężaru i strefy; trening na żywo z pierścieniem; podsumowanie z komentarzem i zatwierdzeniem |
 | Strefy | `zones` → `zone-edit` | wybór aktywnej strefy, edycja zakresu podwójnym suwakiem, własne strefy, co pokazuje środek pierścienia |
-| Zawodnicy | `athletes` → `athlete` → `summary` | lista z wyszukiwarką, wykres postępu (ćwiczenie i ewentualnie stały ciężar), lista treningów |
+| Zawodnicy | `athletes` → `athlete` → `exercise` / `summary` | lista z wyszukiwarką; u zawodnika postęp każdego ćwiczenia (trend, mini-wykres) i lista treningów; ekran ćwiczenia z wykresem, kluczowymi danymi i tabelą treningów |
 | Ustawienia | `settings` | kierunek, kafelki (maks. 3), progi, informacje o czujniku |
 
 Każda zakładka ma własny stos ekranów, więc przejście do innej zakładki w trakcie treningu i powrót wraca
@@ -53,6 +53,15 @@ w niej zawodnika, ćwiczenie, ciężar i migawkę strefy. Zmiana któregoś z ni
 zaczyna nową serię. Zmiana strefy w zakładce Strefy podmienia strefę bieżącej serii.
 Przy „Zakończ trening” serie są dzielone na osobne treningi per zawodnik, więc trenerka może
 w jednej sesji naprzemiennie prowadzić kilka osób.
+
+**Postęp ćwiczeń** (`progress.js`). Prędkość da się porównywać tylko przy tym samym ciężarze, więc
+domyślnie liczy się przy *głównym ciężarze* ćwiczenia, czyli najczęściej używanym (przy remisie cięższym).
+Inny ciężar albo „Każdy ciężar” wybiera się ręcznie, a przy mieszaniu ciężarów pojawia się ostrzeżenie.
+Dla każdego treningu liczone są: najszybsze powtórzenie (prędkość średnia; domyślna miara), średnia
+z powtórzeń i prędkość max. **Trend** to prosta Theila–Sena (mediana nachyleń między parami treningów),
+odporna na pojedynczy wyjątkowo dobry albo słaby dzień. Zmiana dopasowana od pierwszego do ostatniego
+treningu poniżej ±5% oznacza „Bez zmian”, bo tyle wynosi typowa dzienna zmienność. „Stały” postęp
+lub spadek wymaga co najmniej 3 treningów i ≥ 70% kroków w tym samym kierunku.
 
 **Moc** (kafelek i podsumowanie) = ciężar × 9,81 × prędkość średnia [W]. Pokazuje się tylko przy podanym ciężarze.
 
