@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Session } from '../app/js/analysis.js';
 import { zoneStatus, ringFraction, percentInZone } from '../app/js/zones.js';
-import { progressSeries, workoutCsv } from '../app/js/history.js';
+import { workoutCsv } from '../app/js/history.js';
 import { batteryPercent } from '../app/js/settings.js';
 
 const rep = (meanVelocity, extra = {}) => ({ direction: 1, meanVelocity, peakVelocity: meanVelocity * 1.6, rom: 40, duration: 0.5, timeToPeak: 0.2, startTime: 0, ...extra });
@@ -27,16 +27,6 @@ test('zone status, ring fill and share of reps in zone', () => {
   assert.equal(ringFraction(zone, 0.96), 0.8); // render 1 from the coach: 0,96 m/s in 0,80–1,20 fills ~80%
   assert.equal(ringFraction(zone, 2), 1);
   assert.equal(percentInZone(zone, [rep(0.9), rep(0.7), rep(1.0), rep(1.3)]), 0.5);
-});
-
-test('progress series: fastest rep per workout, optional fixed load, oldest first', () => {
-  const workouts = [
-    { id: 'b', date: '2026-10-20', sets: [{ exercise: 'Przysiad', load: 100, reps: [rep(0.7), rep(0.75)] }, { exercise: 'Przysiad', load: 120, reps: [rep(0.5)] }] },
-    { id: 'a', date: '2026-10-10', sets: [{ exercise: 'Przysiad', load: 100, reps: [rep(0.65)] }, { exercise: 'Martwy ciąg', load: 100, reps: [rep(0.9)] }] },
-  ];
-  assert.deepEqual(progressSeries(workouts, 'Przysiad').map((p) => [p.workoutId, p.value]), [['a', 0.65], ['b', 0.75]]);
-  assert.deepEqual(progressSeries(workouts, 'Przysiad', 120).map((p) => p.workoutId), ['b']);
-  assert.deepEqual(progressSeries(workouts, 'Wyciskanie'), []);
 });
 
 test('CSV keeps user text from breaking columns', () => {

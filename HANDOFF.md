@@ -77,9 +77,12 @@ Reszta to dodatki.
 - [x] Zawodnik, ćwiczenie i ciężar przypisane do serii, moc w W
 - [x] Podsumowanie jak render 2: wykres słupkowy, tabela, komentarz, „Zatwierdź wynik”
 - [x] Zawodnicy: wyszukiwarka, wykres postępu (także przy stałym ciężarze), lista treningów ze statusem
-- [ ] Próba na telefonie z prawdziwym czujnikiem
+- [x] Próba na telefonie z prawdziwym czujnikiem (scalone do `main` w PR #1)
+- [x] Statystyki z renderów 5–7 (branch `feature/progress-stats`): postęp każdego ćwiczenia u zawodnika
+  (trend przy głównym ciężarze, mini-wykres), ekran ćwiczenia (wykres, kluczowe dane, trend, tabela, raport CSV),
+  karta „Ćwiczenia” w podsumowaniu treningu (średnia per ćwiczenie, czas treningu, status)
 - Świadomie pominięte z renderów: bateria na ekranie treningu (użytkownik wcześniej prosił o jej usunięcie),
-  zdjęcia zawodników (są inicjały), „metalowe” tła z renderów 5–7, RPE i czas trwania treningu.
+  zdjęcia zawodników (są inicjały), „metalowe” tła z renderów 5–7, RPE.
 
 ## Pomysły na kolejne kroki
 

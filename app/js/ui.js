@@ -84,11 +84,24 @@ export function barChart(values, { zone = null, statusOf = () => '' } = {}) {
   return `<svg viewBox="0 0 ${w} ${h}" class="chart" role="img" aria-label="Prędkość średnia w kolejnych powtórzeniach">${band}${grid}${bars}</svg>`;
 }
 
-/** Line chart of a time series [{date, value}], oldest first. */
-export function lineChart(points) {
+/** Tiny trend line for list rows. */
+export function sparkline(values) {
+  const w = 72;
+  const h = 30;
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const x = (i) => (values.length === 1 ? w / 2 : 3 + ((w - 6) * i) / (values.length - 1));
+  const y = (v) => (hi === lo ? h / 2 : 3 + (h - 6) * (1 - (v - lo) / (hi - lo)));
+  const pts = values.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+  const last = values.length - 1;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}"/><circle cx="${x(last)}" cy="${y(values[last])}" r="2.5"/></svg>`;
+}
+
+/** Line chart of a time series [{date, value}], oldest first; highlight marks one point (e.g. the best). */
+export function lineChart(points, { highlight = -1 } = {}) {
   const w = 320;
   const h = 170;
-  const pad = { l: 30, r: 10, t: 14, b: 24 };
+  const pad = { l: 30, r: 14, t: 22, b: 24 };
   const vals = points.map((p) => p.value);
   const lo = Math.max(0, Math.min(...vals) - 0.1);
   const hi = Math.max(...vals) + 0.1;
@@ -101,7 +114,8 @@ export function lineChart(points) {
   const labelEvery = Math.ceil(points.length / 5);
   const labels = points.map((p, i) => (i % labelEvery === 0 || i === points.length - 1
     ? `<text class="axis" x="${x(i)}" y="${h - 6}" text-anchor="middle">${formatDate(p.date, { day: 'numeric', month: 'short' })}</text>` : '')).join('');
-  const dots = points.map((p, i) => `<circle class="dot" cx="${x(i)}" cy="${y(p.value)}" r="3.5"/>`).join('');
+  const dots = points.map((p, i) => `<circle class="dot${i === highlight ? ' best' : ''}" cx="${x(i)}" cy="${y(p.value)}" r="${i === highlight ? 5 : 3.5}"/>`).join('')
+    + (highlight >= 0 ? `<text class="bar-label" x="${x(highlight)}" y="${y(points[highlight].value) - 9}" text-anchor="middle">${fmt(points[highlight].value, 2)}</text>` : '');
   return `<svg viewBox="0 0 ${w} ${h}" class="chart" role="img" aria-label="Postęp prędkości w czasie">${grid}<path class="area" d="${area}"/><path class="line" d="${line}"/>${dots}${labels}</svg>`;
 }
 

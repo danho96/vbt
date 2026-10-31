@@ -219,7 +219,35 @@ table.reps-table { width: 100%; border-collapse: separate; border-spacing: 0 4px
 .athlete-head { display: flex; align-items: center; gap: 14px; }
 .add-row { display: flex; gap: 8px; margin-top: auto; }
 .add-row .btn { flex: none; }
-.filters { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; margin: 10px 0; }
+.filters { display: grid; grid-template-columns: 0.8fr 1.4fr; gap: 8px; }
+.unit { text-transform: none; color: var(--muted); font-weight: 500; }
+
+/* ---------- progress ---------- */
+.spark { width: 72px; height: 30px; flex: none; }
+.spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark circle { fill: var(--accent); }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.badge.up { color: var(--in); background: rgba(61, 220, 151, 0.12); }
+.badge.down { color: var(--danger); background: rgba(255, 107, 107, 0.12); }
+.list .side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.list .side .num { font-size: 20px; }
+.key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 10px 0; }
+.key-grid div { display: flex; flex-direction: column; }
+.key-grid b { font-family: var(--display); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.key-grid .pos { color: var(--in); }
+.key-grid .neg { color: var(--danger); }
+.trend-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 14px; }
+.history-table tbody tr { cursor: pointer; }
+.history-table td { font-size: 16px; }
+.chart .dot.best { fill: var(--accent); }
+.intel { display: flex; flex-direction: column; gap: 8px; }
+.intel-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.intel-row:last-of-type { border-bottom: none; }
+.intel-row .name { font-family: var(--display); font-size: 19px; font-weight: 600; text-transform: uppercase; }
+.intel-row .num { font-size: 19px; text-align: right; }
+.intel-foot { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); padding-top: 8px; border-top: 1px solid var(--border); }
+.intel-foot b { color: var(--text); font-weight: 500; }
+.intel-foot .approved { color: var(--in); }
 .section-label { margin-top: 6px; }
 
 /* ---------- bottom sheet ---------- */

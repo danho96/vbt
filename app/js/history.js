@@ -82,22 +82,6 @@ export function workoutTotals(workout) {
   return { sets: workout.sets.length, reps, exercises, summaries: workout.sets.map(setSummary) };
 }
 
-/**
- * Progress of one exercise over time: per workout, the fastest rep (mean velocity) among sets of that
- * exercise, optionally only at a given load. Oldest first.
- */
-export function progressSeries(workouts, exercise, load = null) {
-  return workouts
-    .map((w) => {
-      const sets = w.sets.filter((s) => s.exercise === exercise && (load === null || s.load === load));
-      if (!sets.length) return null;
-      const best = Math.max(...sets.flatMap((s) => s.reps.map((r) => r.meanVelocity)));
-      return { date: w.date, value: best, sets: sets.length, workoutId: w.id };
-    })
-    .filter(Boolean)
-    .reverse();
-}
-
 const n = (v, d) => v.toFixed(d).replace('.', ',');
 
 /** Semicolon-separated CSV with decimal commas, which is what Polish Excel / Sheets expect. */
