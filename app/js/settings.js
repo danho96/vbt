@@ -1,16 +1,19 @@
 // User preferences, kept per device in localStorage.
+import { meanPower, peakPower } from './analysis.js';
 
-const G = 9.81;
+/** Metric of a power kind: value is 0 and the text a dash until the load is set. */
+const powerMetric = (label, short, compute) => ({
+  label, short, unit: 'W', icon: 'bolt', needsLoad: true,
+  value: (r, set) => (set?.load > 0 ? compute(r, set.load) : 0),
+  format: (r, set) => (set?.load > 0 ? fmt(compute(r, set.load), 0) : '–'),
+});
 
 export const METRICS = {
-  meanVelocity: { label: 'Prędkość średnia', short: 'Średnia', unit: 'm/s', icon: 'speed', format: (r) => fmt(r.meanVelocity, 2) },
-  peakVelocity: { label: 'Prędkość max', short: 'Max', unit: 'm/s', icon: 'gauge', format: (r) => fmt(r.peakVelocity, 2) },
-  power: {
-    label: 'Moc średnia', short: 'Moc', unit: 'W', icon: 'bolt',
-    // Mean concentric power of lifting the bar: m * g * v. Needs the load to be set.
-    format: (r, set) => (set?.load > 0 ? fmt(set.load * G * r.meanVelocity, 0) : '–'),
-  },
-  rom: { label: 'Zakres ruchu', short: 'Zakres', unit: 'cm', icon: 'ruler', format: (r) => fmt(r.rom, 0) },
+  meanVelocity: { label: 'Prędkość średnia', short: 'Średnia', unit: 'm/s', icon: 'speed', value: (r) => r.meanVelocity, format: (r) => fmt(r.meanVelocity, 2) },
+  peakVelocity: { label: 'Prędkość max', short: 'Max', unit: 'm/s', icon: 'gauge', value: (r) => r.peakVelocity, format: (r) => fmt(r.peakVelocity, 2) },
+  power: powerMetric('Moc średnia', 'Moc', meanPower),
+  peakPower: powerMetric('Moc max', 'Moc max', peakPower),
+  rom: { label: 'Odległość', short: 'Odległość', unit: 'cm', icon: 'ruler', value: (r) => r.rom, format: (r) => fmt(r.rom, 0) },
   velocityLoss: { label: 'Spadek prędkości', short: 'Spadek', unit: '%', icon: 'trend', format: (r) => (r.velocityLoss > 0 ? `-${fmt(r.velocityLoss * 100, 0)}` : '0') },
   duration: { label: 'Czas koncentryczny', short: 'Czas', unit: 's', icon: 'clock', format: (r) => fmt(r.duration, 2) },
   timeToPeak: { label: 'Czas do max', short: 'Do max', unit: 'ms', icon: 'clock', format: (r) => fmt(r.timeToPeak * 1000, 0) },
@@ -18,10 +21,13 @@ export const METRICS = {
 
 export const MAX_TILES = 3;
 
-/** What the centre of the ring shows. */
+/** What the centre of the ring shows (the main value). Keys other than zonePercent are METRICS keys. */
 export const RING_METRICS = {
-  meanVelocity: { label: 'Średnia', short: 'ŚR' },
-  peakVelocity: { label: 'Max', short: 'MAX' },
+  meanVelocity: { label: 'Prędkość śr.', short: 'PRĘDKOŚĆ ŚR' },
+  peakVelocity: { label: 'Prędkość max', short: 'PRĘDKOŚĆ MAX' },
+  rom: { label: 'Odległość', short: 'ODLEGŁOŚĆ' },
+  power: { label: 'Moc śr.', short: 'MOC ŚR' },
+  peakPower: { label: 'Moc max', short: 'MOC MAX' },
   zonePercent: { label: '% w strefie', short: 'W STREFIE' },
 };
 

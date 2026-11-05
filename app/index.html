@@ -84,6 +84,7 @@
         <textarea id="summary-comment" rows="3" placeholder="Np. kontroluj tempo opuszczania"></textarea>
       </div>
       <div class="actions">
+        <button id="delete-workout" class="btn icon danger" aria-label="Usuń trening"></button>
         <button id="export" class="btn icon" aria-label="Eksport CSV"></button>
         <button id="approve" class="btn primary"></button>
       </div>
@@ -97,7 +98,8 @@
       <button id="add-zone" class="btn outline"></button>
 
       <div class="card">
-        <div class="display-sm">W ŚRODKU PIERŚCIENIA</div>
+        <div class="display-sm">WARTOŚĆ GŁÓWNA</div>
+        <p class="muted hint">To, co pokazuje środek pierścienia. Moc wymaga podania ciężaru.</p>
         <div id="ring-metric" class="segmented" role="radiogroup"></div>
       </div>
     </section>
@@ -146,6 +148,9 @@
       <div class="display-sm section-label">TRENINGI</div>
       <ul id="workout-list" class="list"></ul>
       <p id="workouts-empty" class="muted center" hidden>Zakończone treningi pojawią się tutaj.</p>
+      <div class="actions">
+        <button id="delete-athlete" class="btn danger"></button>
+      </div>
     </section>
 
     <section id="exercise" class="screen" hidden>

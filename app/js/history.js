@@ -1,5 +1,5 @@
 // Athletes and finished workouts, kept on this phone only.
-import { setSummary } from './analysis.js';
+import { setSummary, meanPower, peakPower } from './analysis.js';
 
 const HISTORY_KEY = 'vbt.history.v1';
 const ATHLETES_KEY = 'vbt.athletes.v1';
@@ -38,6 +38,12 @@ export function addAthlete(name) {
 
 export const athleteName = (id) => loadAthletes().find((a) => a.id === id)?.name ?? null;
 
+/** Removes the athlete together with their workouts. null removes the workouts saved without an athlete. */
+export function deleteAthlete(id) {
+  if (id !== null) write(ATHLETES_KEY, loadAthletes().filter((a) => a.id !== id));
+  write(HISTORY_KEY, loadHistory().filter((w) => (w.athleteId ?? null) !== id));
+}
+
 // ---------- workouts ----------
 
 /** Workouts from v1 had no id/athlete; give them stable ids so they can be opened and edited. */
@@ -72,6 +78,8 @@ export function updateWorkout(id, changes) {
   return workout;
 }
 
+export const deleteWorkout = (id) => write(HISTORY_KEY, loadHistory().filter((w) => w.id !== id));
+
 export const getWorkout = (id) => loadHistory().find((w) => w.id === id) ?? null;
 
 export const workoutsOf = (athleteId) => loadHistory().filter((w) => (w.athleteId ?? null) === athleteId);
@@ -86,14 +94,14 @@ const n = (v, d) => v.toFixed(d).replace('.', ',');
 
 /** Semicolon-separated CSV with decimal commas, which is what Polish Excel / Sheets expect. */
 export function workoutCsv(workout, athlete) {
-  const rows = [['Data', 'Zawodnik', 'Ćwiczenie', 'Ciężar [kg]', 'Seria', 'Powtórzenie', 'Prędkość średnia [m/s]', 'Prędkość max [m/s]', 'Moc [W]', 'Spadek [%]', 'Zakres [cm]', 'Czas [s]', 'Czas do max [ms]', 'Strefa']];
+  const rows = [['Data', 'Zawodnik', 'Ćwiczenie', 'Ciężar [kg]', 'Seria', 'Powtórzenie', 'Prędkość średnia [m/s]', 'Prędkość max [m/s]', 'Moc średnia [W]', 'Moc max [W]', 'Spadek [%]', 'Odległość [cm]', 'Czas [s]', 'Czas do max [ms]', 'Strefa']];
   const date = new Date(workout.date).toLocaleString('pl-PL');
   for (const set of workout.sets) {
     const best = Math.max(...set.reps.map((r) => r.meanVelocity));
     set.reps.forEach((r, i) => {
       rows.push([
         date, athlete ?? '', set.exercise ?? '', set.load ? n(set.load, set.load % 1 ? 1 : 0) : '', set.number, i + 1,
-        n(r.meanVelocity, 2), n(r.peakVelocity, 2), set.load ? n(set.load * 9.81 * r.meanVelocity, 0) : '',
+        n(r.meanVelocity, 2), n(r.peakVelocity, 2), set.load ? n(meanPower(r, set.load), 0) : '', set.load ? n(peakPower(r, set.load), 0) : '',
         n(best > 0 ? ((best - r.meanVelocity) / best) * 100 : 0, 0), n(r.rom, 1), n(r.duration, 2), n(r.timeToPeak * 1000, 0),
         set.zone ? `${set.zone.name} ${n(set.zone.min, 2)}-${n(set.zone.max, 2)}` : '',
       ].map(csvCell));
