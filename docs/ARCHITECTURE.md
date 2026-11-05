@@ -63,7 +63,18 @@ odporna na pojedynczy wyjątkowo dobry albo słaby dzień. Zmiana dopasowana od 
 treningu poniżej ±5% oznacza „Bez zmian”, bo tyle wynosi typowa dzienna zmienność. „Stały” postęp
 lub spadek wymaga co najmniej 3 treningów i ≥ 70% kroków w tym samym kierunku.
 
-**Moc** (kafelek i podsumowanie) = ciężar × 9,81 × prędkość średnia [W]. Pokazuje się tylko przy podanym ciężarze.
+**Wartość główna** (środek pierścienia, wybór w zakładce Strefy): prędkość średnia, prędkość max, odległość,
+moc średnia, moc max albo % powtórzeń w strefie. Strefy są prędkościami, więc tylko prędkość wypełnia pierścień
+względem strefy. Moc i odległość wypełniają go względem najlepszego powtórzenia serii.
+
+**Moc** pokazuje się tylko przy podanym ciężarze; ciężar to masa sztangi, bez masy ciała. Moc średnia =
+ciężar × 9,81 × prędkość średnia (przyspieszenie się znosi, bo sztanga zaczyna i kończy fazę prawie w spoczynku).
+Moc max = ciężar × max[v × (g + a)], gdzie a to różnica prędkości w oknie ±3 próbek. Powtórzenie przechowuje
+`peakPowerPerKg`, a powtórzenia sprzed tej metryki używają przybliżenia g × prędkość max (zaniża wynik).
+
+**Usuwanie.** Zawodnika usuwa się wraz z treningami na jego ekranie, a pojedynczy trening w podsumowaniu.
+Każde usunięcie jest trwałe i wymaga potwierdzenia. Zawodnika biorącego udział w trwającym treningu nie da się
+usunąć, bo jego serie zapisują się dopiero po zakończeniu.
 
 ## Przepływ danych
 
@@ -96,7 +107,7 @@ więc reszta aplikacji nie wie, czy dane są prawdziwe.
 |---|---|---|
 | Prędkość średnia | zakres / czas fazy | pozycja nie jest filtrowana, więc to standard dla enkoderów liniowych |
 | Prędkość max | max wyrównanej prędkości z czujnika | pochodna pozycji ma fałszywe skoki |
-| Zakres ruchu | pozycja końcowa − początkowa | |
+| Odległość | pozycja końcowa − początkowa w jednym powtórzeniu | w UI i CSV „Odległość” (w kodzie `rom`) |
 | Czas koncentryczny, czas do max | liczba próbek × 10 ms | |
 | Spadek prędkości | (najlepsza średnia − bieżąca) / najlepsza | |
 

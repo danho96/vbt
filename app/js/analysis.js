@@ -12,6 +12,33 @@ export const DEFAULT_DETECTION = {
 // (cross-correlation peak on the reference recording), so velocity sample i + LAG belongs to position sample i.
 export const VELOCITY_LAG_SAMPLES = 5;
 
+const G = 9.81;
+// Acceleration comes from a difference over +-3 samples: wide enough that one glitched velocity sample
+// (up to ~0.1 m/s on the reference recording) cannot fake a power spike.
+const ACCEL_HALF_WINDOW = 3;
+
+/**
+ * Mean concentric power: the force needed against gravity times mean velocity. Acceleration cancels out here,
+ * because the bar starts and ends the phase (nearly) at rest. Load is the moved mass, without body weight.
+ */
+export const meanPower = (rep, load) => load * G * rep.meanVelocity;
+
+/** Highest instantaneous power of the phase. Reps saved before this metric existed fall back to m * g * v_peak. */
+export const peakPower = (rep, load) => load * (rep.peakPowerPerKg ?? G * rep.peakVelocity);
+
+/** max of v * (g + a) over a phase, in W/kg, so it can be scaled by the load (which may be set later). */
+function peakPowerPerKg(samples, dt) {
+  const v = samples.map(([, mmPerS]) => mmPerS / 1000);
+  let peak = 0;
+  v.forEach((vi, i) => {
+    const from = Math.max(0, i - ACCEL_HALF_WINDOW);
+    const to = Math.min(v.length - 1, i + ACCEL_HALF_WINDOW);
+    const accel = to > from ? (v[to] - v[from]) / ((to - from) * dt) : 0;
+    peak = Math.max(peak, vi * (G + accel));
+  });
+  return peak;
+}
+
 /**
  * Metrics of one concentric phase.
  * @typedef {{meanVelocity: number, peakVelocity: number, rom: number, duration: number,
@@ -36,6 +63,7 @@ export function repMetrics(samples, startIndex) {
   return {
     meanVelocity: romMm / duration / 1000,
     peakVelocity: peak / 1000,
+    peakPowerPerKg: peakPowerPerKg(samples, dt),
     rom: romMm / 10,
     duration,
     timeToPeak: (peakAt + 1) * dt,

@@ -1,9 +1,9 @@
-import { RepDetector, Session, setSummary, velocityLoss } from './analysis.js';
+import { RepDetector, Session, setSummary, velocityLoss, meanPower, peakPower } from './analysis.js';
 import { BleSensor, DemoSensor, bluetoothAvailable } from './sensor.js';
 import { METRICS, MAX_TILES, RING_METRICS, EXERCISES, fmt, loadSettings, saveSettings, batteryPercent } from './settings.js';
 import {
-  loadAthletes, addAthlete, athleteName, loadHistory, saveWorkout, updateWorkout, getWorkout,
-  workoutsOf, workoutTotals, workoutCsv,
+  loadAthletes, addAthlete, deleteAthlete, athleteName, loadHistory, saveWorkout, updateWorkout, deleteWorkout,
+  getWorkout, workoutsOf, workoutTotals, workoutCsv,
 } from './history.js';
 import { PRESET_ZONES, SLIDER_MAX, zoneStatus, ringFraction, percentInZone, formatRange } from './zones.js';
 import {
@@ -181,7 +181,9 @@ function warn() {
 /** Colour class of a rep: zone position when a zone is set, otherwise the velocity-loss warning. */
 const repClass = (rep, zone) => (zone ? zoneStatus(zone, rep.meanVelocity) : isWarn(rep) ? 'warn' : '');
 
-const loadText = (load) => (load ? `${fmt(load, load % 1 ? 1 : 0)} kg` : '–');
+const isVelocityMetric = (metric) => metric === 'meanVelocity' || metric === 'peakVelocity';
+
+const loadText = (load) => (load ?`${fmt(load, load % 1 ? 1 : 0)} kg` : '–');
 
 function renderLive({ flash = false } = {}) {
   if (!session) return;
@@ -214,13 +216,19 @@ function renderLive({ flash = false } = {}) {
     } else if (!zone) {
       unit = 'wybierz strefę';
     }
-  } else if (last) {
-    const v = last[metric];
-    value = fmt(v, 2);
-    fraction = ringFraction(zone, v);
-    status = zone ? zoneStatus(zone, last.meanVelocity) : isWarn(last) ? 'below' : null;
+  } else {
+    const m = METRICS[metric];
+    unit = m.needsLoad && !(set ?? settings).load ? 'podaj ciężar' : m.unit;
+    if (last) {
+      value = m.format(last, set);
+      // Zones are velocities, so only velocity fills the ring against the zone; the others against the set's best.
+      fraction = isVelocityMetric(metric)
+        ? ringFraction(zone, m.value(last, set))
+        : m.value(last, set) / (Math.max(...reps.map((r) => m.value(r, set))) || 1);
+      status = zone ? zoneStatus(zone, last.meanVelocity) : isWarn(last) ? 'below' : null;
+    }
   }
-  const tickAt = zone && metric !== 'zonePercent' ? zone.min / zone.max : null;
+  const tickAt = zone && isVelocityMetric(metric) ? zone.min / zone.max : null;
   $('ring').innerHTML = ring({ fraction, status, tickAt });
   $('ring-label').textContent = RING_METRICS[metric].short;
   $('ring-value').textContent = value;
@@ -406,7 +414,8 @@ function setBlock(set) {
     </table>
     <div class="summary-line"><span class="muted">Średnia serii</span><span class="num">${fmt(s.avgMean, 2)} m/s</span></div>
     <div class="summary-line"><span class="muted">Spadek prędkości</span><span class="num">${s.velocityLoss > 0 ? '-' : ''}${fmt(s.velocityLoss * 100, 0)}%</span></div>
-    ${set.load ? `<div class="summary-line"><span class="muted">Moc średnia</span><span class="num">${fmt(set.load * 9.81 * s.avgMean, 0)} W</span></div>` : ''}
+    ${set.load ? `<div class="summary-line"><span class="muted">Moc średnia</span><span class="num">${fmt(meanPower({ meanVelocity: s.avgMean }, set.load), 0)} W</span></div>
+    <div class="summary-line"><span class="muted">Moc max</span><span class="num">${fmt(Math.max(...set.reps.map((r) => peakPower(r, set.load))), 0)} W</span></div>` : ''}
   </div>`;
 }
 
@@ -425,6 +434,15 @@ $('summary-comment').addEventListener('change', (e) => updateWorkout(summaryId, 
 $('approve').addEventListener('click', () => {
   const w = getWorkout(summaryId);
   renderApprove(updateWorkout(summaryId, { approved: !w.approved, comment: $('summary-comment').value.trim() }));
+});
+
+$('delete-workout').innerHTML = icon('trash');
+$('delete-workout').addEventListener('click', () => {
+  const workout = getWorkout(summaryId);
+  const when = formatDate(workout.date, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  if (!confirm(`Usunąć trening z ${when}? Tego nie da się cofnąć.`)) return;
+  deleteWorkout(summaryId);
+  back();
 });
 
 $('export').innerHTML = icon('share');
@@ -634,7 +652,32 @@ renderers.athlete = () => {
     })
     .join('');
   $('workouts-empty').hidden = workouts.length > 0;
+
+  const isAthlete = shownAthleteId !== null;
+  $('delete-athlete').hidden = !isAthlete && !workouts.length;
+  $('delete-athlete').innerHTML = `${icon('trash')} ${isAthlete ? 'Usuń zawodnika' : 'Usuń te treningi'}`;
 };
+
+$('delete-athlete').addEventListener('click', () => {
+  const id = shownAthleteId;
+  // Sets of the running workout are saved under their athlete only when it ends.
+  if (id !== null && session && (settings.athleteId === id || session.sets.some((s) => s.athleteId === id))) {
+    alert('Ten zawodnik bierze udział w trwającym treningu. Zakończ trening albo zmień zawodnika, żeby go usunąć.');
+    return;
+  }
+  const count = workoutsOf(id).length;
+  const trainings = `${count} ${plural(count, 'treningiem', 'treningami', 'treningami')}`;
+  const question = id === null
+    ? `Usunąć ${count} ${plural(count, 'trening', 'treningi', 'treningów')} bez zawodnika? Tego nie da się cofnąć.`
+    : `Usunąć zawodnika „${athleteName(id)}”${count ? ` wraz z ${trainings}` : ''}? Tego nie da się cofnąć.`;
+  if (!confirm(question)) return;
+  deleteAthlete(id);
+  if (settings.athleteId === id) {
+    settings.athleteId = null;
+    saveSettings(settings);
+  }
+  back();
+});
 
 const signed = (v, digits) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${fmt(Math.abs(v), digits)}`;
 const changeText = (t) => `${signed(t.changePct * 100, 0)}%`;
@@ -664,6 +707,8 @@ $('exercise-list').addEventListener('click', (e) => {
 
 function exerciseView() {
   const workouts = workoutsOf(shownAthleteId);
+  // The chosen load may be gone after deleting a workout.
+  if (exerciseLoad && !exerciseLoads(workouts, shownExercise).includes(+exerciseLoad)) exerciseLoad = undefined;
   const load = exerciseLoad === undefined ? mainLoad(workouts, shownExercise) : exerciseLoad === '' ? null : +exerciseLoad;
   const sessions = exerciseSessions(workouts, shownExercise, load);
   return { workouts, load, sessions, trend: trend(sessions, exerciseMetric) };
@@ -671,6 +716,8 @@ function exerciseView() {
 
 renderers.exercise = () => {
   const { workouts, load, sessions, trend: t } = exerciseView();
+  // The last workout of this exercise was just deleted.
+  if (!exerciseSessions(workouts, shownExercise).length) return back();
   const name = athleteName(shownAthleteId) ?? 'Bez zawodnika';
   $('exercise-athlete').textContent = name;
   $('exercise-name').textContent = shownExercise;

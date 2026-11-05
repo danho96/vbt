@@ -81,6 +81,8 @@ Reszta to dodatki.
 - [x] Statystyki z renderów 5–7 (branch `feature/progress-stats`): postęp każdego ćwiczenia u zawodnika
   (trend przy głównym ciężarze, mini-wykres), ekran ćwiczenia (wykres, kluczowe dane, trend, tabela, raport CSV),
   karta „Ćwiczenia” w podsumowaniu treningu (średnia per ćwiczenie, czas treningu, status)
+- [x] Uwagi trenerki (branch `feature/delete-and-main-value`): usuwanie zawodników i treningów, wartość główna
+  do wyboru (prędkość śr./max, moc śr./max, odległość, % w strefie)
 - Świadomie pominięte z renderów: bateria na ekranie treningu (użytkownik wcześniej prosił o jej usunięcie),
   zdjęcia zawodników (są inicjały), „metalowe” tła z renderów 5–7, RPE.
 
